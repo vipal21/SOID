@@ -12,7 +12,7 @@ func printFirstNumber() {
 }
 ```
 
-**Understanding O(n))**
+**Understanding O(n)**
 The total number of operations depends linearly on n.Time complexity is O(n) (linear time), because the number of operations grows directly with the size of the input.
 
 ## Example: O(n)
