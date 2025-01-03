@@ -190,7 +190,7 @@ In Grand Central Dispatch (GCD), queues are used to manage tasks and determine h
         Task 1
         Task 2
         ```
-  ### **5. Deadlock Example**
+  ### **4. Deadlock Example**
 
    All possible combinations of `async` and `sync` calls within a **single serial queue** using Grand Central Dispatch (GCD) in Swift, with explanations and examples of whether a deadlock occurs.
   
@@ -241,8 +241,85 @@ In Grand Central Dispatch (GCD), queues are used to manage tasks and determine h
   
   **Explanation**: The outer sync blocks the queue while waiting for the inner sync to complete. However, the inner sync cannot run because the queue is still busy with the outer sync, causing a circular wait.
   
-  ---
+### **5.  What is Dispatch Group?**
+`DispatchGroup` is a powerful tool in Grand Central Dispatch (GCD) that helps synchronize and track the completion of multiple asynchronous tasks.
+
+## Features
+- **Track multiple tasks**: Add tasks to a `DispatchGroup` and be notified when all tasks complete.
+- **Synchronize operations**: Block execution until all tasks in the group finish (if needed).
+- **Timeout handling**: Specify a timeout to prevent indefinite waiting.
   
-  ## Conclusion:
-  Understanding the interaction of `async` and `sync` calls within a single queue is critical to avoid deadlocks and ensure smooth execution of tasks in your Swift programs. Always avoid making `sync` calls to the same queue that is already processing tasks to prevent deadlock scenarios.
-  
+## Key Methods
+
+| **Method**                  | **Description**                                                                                                     |
+|-----------------------------|---------------------------------------------------------------------------------------------------------------------|
+| `enter()`                   | Indicates that a task has started and is being tracked by the group.                                                |
+| `leave()`                   | Indicates that a task has completed. Must always match a preceding `enter()` call.                                  |
+| `notify(queue:execute:)`    | Executes a closure on the specified queue after all tasks in the group have completed.                              |
+| `wait()`                    | Blocks the current thread until all tasks in the group are complete.                                                |
+| `wait(timeout:)`            | Blocks the current thread until all tasks in the group are complete or the specified timeout expires.               |
+
+ **Example**
+     
+  ```swift
+  ```swift
+import Foundation
+
+// Create a dispatch group
+let dispatchGroup = DispatchGroup()
+
+// Define a concurrent queue
+let queue = DispatchQueue.global()
+
+// Task 1: Add a task to the group
+dispatchGroup.enter()
+queue.async {
+    print("Task 1 started")
+    sleep(2) // Simulate a 2-second operation
+    print("Task 1 completed")
+    dispatchGroup.leave()
+}
+
+// Task 2: Add another task to the group
+dispatchGroup.enter()
+queue.async {
+    print("Task 2 started")
+    sleep(1) // Simulate a 1-second operation
+    print("Task 2 completed")
+    dispatchGroup.leave()
+}
+
+// Wait for all tasks to complete
+print("Waiting for tasks to complete...")
+dispatchGroup.wait() // Blocks the current thread until Task 1 and Task 2 finish
+print("All tasks completed, proceeding to the next step")
+
+// Task 3: Automatically tracked task
+queue.async(group: dispatchGroup) {
+    print("Task 3 started")
+    sleep(1) // Simulate another 1-second operation
+    print("Task 3 completed")
+}
+
+// Notify when all tasks are done
+dispatchGroup.notify(queue: DispatchQueue.main) {
+    print("All tasks, including Task 3, are now complete")
+}
+
+// Allow the program to run until all tasks finish
+sleep(5)
+  ``` 
+ **Output**
+     
+  ```swift
+  Waiting for tasks to complete...
+  Task 1 started
+  Task 2 started
+  Task 2 completed
+  Task 1 completed
+  All tasks completed, proceeding to the next step
+  Task 3 started
+  Task 3 completed
+  All tasks, including Task 3, are now complete
+
+  ``` 
