@@ -322,4 +322,192 @@ sleep(5)
   Task 3 completed
   All tasks, including Task 3, are now complete
 
+  ```
+### **6.  What is Dispatch semaphore?**
+A `DispatchSemaphore` is a concurrency control mechanism in Swift that allows for the synchronization of threads..
+
+## Key Methods
+
+| **Method**    | **Description**                                          | **When to Use** |
+|---------------|----------------------------------------------------------|-----------------|
+| **wait()**    | Decreases the semaphore count. If the count is 0, the task will wait until it's signaled. | Use when you want a task to wait for permission to run or for a resource to become available. |
+| **signal()**  | Increases the semaphore count, allowing waiting tasks to proceed. | Use when a task is done and you want to let other waiting tasks run. |
+
+**
+## Key Usecases
+
+| **Use Case**                           | **What It Does** | **Example** |
+|----------------------------------------|------------------|-------------|
+| **Limiting Concurrent API Calls**      | Controls how many requests can happen at the same time. | Limit the number of downloads or API calls to prevent server overload. |
+| **Database Connection Pooling**        | Limits the number of database connections at once. | Ensure only a set number of people can access the database at the same time. |
+| **Synchronizing Multiple Threads**     | Makes sure all tasks finish before moving on. | Wait for several tasks to finish before continuing the program. |
+| **Task Dependencies (Enforcing Order)**| Makes tasks run in a specific order. | Task B waits for Task A to finish before it starts. |
+
+ **Example:Task Dependencies**
+     
+  ```swift
+ let semaphore = DispatchSemaphore(value: 0)  // Start with 0 so task B waits for task A
+ 
+ func taskA() {
+     DispatchQueue.global().async {
+         print("Task A started")
+         sleep(2)
+         print("Task A completed")
+         semaphore.signal()  // Signal that task A is complete
+     }
+ }
+ 
+ func taskB() {
+     DispatchQueue.global().async {
+         semaphore.wait()  // Wait for task A to complete
+         print("Task B started")
+         sleep(1)
+         print("Task B completed")
+     }
+ }
+ 
+ taskA()
+ taskB()
+ 
+ sleep(5)
+
   ``` 
+ **Output**
+     
+  ```swift
+ Task A started
+ Task A completed
+ Task B started
+ Task B completed
+
+  ```
+ **Example: Limiting concurrent downloads**
+     
+  ```swift
+ let semaphore = DispatchSemaphore(value: 3)  // Allow only 3 concurrent downloads
+
+func downloadFile(url: String) {
+    semaphore.wait()  // Wait until a slot is available
+    print("Starting download from \(url)")
+    DispatchQueue.global().asyncAfter(deadline: .now() + 2) {
+        print("Download complete from \(url)")
+        semaphore.signal()  // Release the slot
+    }
+}
+
+let urls = ["url1", "url2", "url3", "url4", "url5"]
+for url in urls {
+    downloadFile(url: url)
+}
+
+// Keep the main thread alive to allow async tasks to complete
+sleep(10)
+
+  ``` 
+ **Output**
+     
+  ```swift
+Starting download from url1
+Starting download from url2
+Starting download from url3
+Download complete from url1
+Starting download from url4
+Download complete from url2
+Starting download from url5
+Download complete from url3
+Download complete from url4
+Download complete from url5
+
+
+  ``` 
+### **6.  What is Race condition?**
+A ` race condition` happens when two or more parts of a program try to access or change shared data at the same time, and the final result depends on the timing of these actions. This can lead to unexpected or incorrect behavior in the program.
+
+## When to Prefer Each Solution for Race Conditions
+
+| **Scenario**                              | **Recommended Method**                | **Why?**                                                                                     |
+|-------------------------------------------|---------------------------------------|---------------------------------------------------------------------------------------------|
+| Incrementing or modifying a shared variable concurrently | `DispatchQueue` (Serial) or `actor`   | Ensures serialized access without complex synchronization code.                            |
+| Managing a pool of limited resources       | `DispatchSemaphore`                   | Controls the maximum number of threads accessing the resource simultaneously.              |
+| Explicit synchronization for critical sections | `NSLock`                              | Ideal for low-level control when you can carefully handle locking and unlocking.           |
+| Handling modern shared state in Swift 5.5+ | `actor`                               | Provides automatic synchronization, reducing the risk of errors in concurrent programming. |
+
+
+ **Example**
+     
+  ```swift
+ import Foundation
+
+// Class to safely increment and retrieve a counter value
+class Counter {
+    private var value = 0 // Shared resource (counter)
+    
+    // Serial queue for thread-safe operations
+    private let queue = DispatchQueue(label: "com.example.counterQueue")
+    
+    // Lock for manual thread synchronization
+    let lock = NSLock()
+    
+    // Semaphore with a single permit for controlling access
+    private let semaphore = DispatchSemaphore(value: 1) 
+
+    // Increment function demonstrating multiple synchronization techniques
+    func increment() {
+        // --------------- LOCK BASED ----------------
+        // Using NSLock to safely increment the value
+        lock.lock() // Acquiring the lock
+        self.value += 1
+        lock.unlock() // Releasing the lock
+
+        // --------------- SERIAL DISPATCH QUEUE BASED ----------------
+        // Using a serial queue to ensure value is incremented one task at a time
+        queue.async {
+            self.value += 1
+        }
+
+        // ------------------- SEMAPHORE -----------------
+        // Using DispatchSemaphore to control access to the shared resource
+        semaphore.wait() // Waiting for a permit
+        self.value += 1
+        semaphore.signal() // Releasing the permit
+    }
+
+    // Function to retrieve the current value safely
+    func getValue() -> Int {
+        // Using a serial queue to ensure the read operation is thread-safe
+        queue.sync {
+            value
+        }
+    }
+}
+
+let counter = Counter()
+
+// Perform the increment operation concurrently across 1000 iterations
+DispatchQueue.concurrentPerform(iterations: 1000) { _ in
+    counter.increment()
+}
+
+// Print the final value
+print(counter.getValue()) // Always 1000
+
+
+  ``` 
+## Explanation of Synchronization Techniques
+
+### **NSLock**
+- **How it works**:  
+  Demonstrates manual locking and unlocking to ensure thread safety.
+- **When to use**:  
+  Useful when you need direct control over the locking mechanism.
+
+### **Serial DispatchQueue**
+- **How it works**:  
+  Ensures all tasks accessing the shared resource are executed sequentially, avoiding race conditions.
+
+### **DispatchSemaphore**
+- **How it works**:  
+  Controls access to the resource by allowing only one thread to proceed at a time.
+  - The `wait()` method blocks until a permit is available, and `signal()` releases the permit.
+
+
