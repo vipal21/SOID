@@ -510,4 +510,4 @@ print(counter.getValue()) // Always 1000
   Controls access to the resource by allowing only one thread to proceed at a time.
   - The `wait()` method blocks until a permit is available, and `signal()` releases the permit.
 
-
+ 
